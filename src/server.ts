@@ -46,6 +46,8 @@ app.get('/', (req: Request, res: Response) => {
       search: 'POST /api/psn/search',
       createGroup: 'POST /api/psn/groups',
       getGroups: 'GET /api/psn/groups',
+      getFirstGroupMessages: 'GET /api/psn/messages/first',
+      getMessages: 'GET /api/psn/messages/:groupId/:threadId?',
       sendMessage: 'POST /api/psn/messages',
       addResource: 'POST /api/psn/resources',
       sendResource: 'POST /api/psn/resources/send'

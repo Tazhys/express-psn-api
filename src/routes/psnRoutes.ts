@@ -188,6 +188,64 @@ router.get('/groups', initializePSNApi, async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/psn/messages/first - Get messages from first available group
+router.get('/messages/first', initializePSNApi, async (req: Request, res: Response) => {
+  try {
+    if (!psnApi) {
+      return res.status(500).json({ error: 'PSN API not initialized' });
+    }
+    const [success, messages, group] = await psnApi.GetFirstGroupMessages();
+    if (success) {
+      res.json({ 
+        success: true, 
+        messages,
+        group: group ? {
+          groupId: group.groupId,
+          groupName: group.groupName,
+          threadId: group.mainThread?.threadId
+        } : null
+      });
+    } else {
+      console.log(messages, group)
+      res.status(500).json({ success: false, error: 'Failed to get messages from first group' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/psn/messages/:groupId/:threadId? - Get messages
+router.get('/messages/:groupId/:threadId?', initializePSNApi, async (req: Request, res: Response) => {
+  try {
+    if (!psnApi) {
+      return res.status(500).json({ error: 'PSN API not initialized' });
+    }
+    const { groupId, threadId } = req.params;
+    console.log('Getting messages for groupId:', groupId, 'threadId:', threadId);
+    if (!groupId) {
+      return res.status(400).json({ error: 'groupId is required' });
+    }
+    const [success, messages] = await psnApi.GetMessages(groupId, threadId);
+    if (success) {
+      res.json({ success: true, messages });
+    } else {
+      console.error('Failed to get messages. Response:', messages);
+      // Return the error response from Sony's API if available
+      if (messages && typeof messages === 'object') {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Failed to get messages',
+          details: messages
+        });
+      }
+      res.status(500).json({ success: false, error: 'Failed to get messages' });
+    }
+  } catch (error: any) {
+    console.error('Error in get messages route:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/psn/messages - Send message
 router.post('/messages', initializePSNApi, async (req: Request, res: Response) => {
   try {

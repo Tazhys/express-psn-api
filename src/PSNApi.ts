@@ -4,7 +4,7 @@ import * as path from 'path';
 import { UserProfile } from './types/UserProfile';
 import { Profiles } from './types/Friends';
 import { DomainResponse } from './types/Search';
-import { Root, CreatedGroup, MessagingConfig, ResourceType } from './types/Group';
+import { Root, CreatedGroup, MessagingConfig, ResourceType, Group } from './types/Group';
 import { Token, Tokens } from './types/Token';
 
 const PSN_API_CONFIG = path.join(process.cwd(), 'data', 'psn_tokens.json');
@@ -231,6 +231,60 @@ export class PSNApi {
     return [false, {} as Root];
   }
 
+  async GetMessages(groupId: string, threadId?: string): Promise<[boolean, any]> {
+    if (!this.HasAccessToken()) {
+      return [false, null];
+    }
+
+    const headers = {
+      'Accept-Language': 'en-US'
+    };
+
+    const effectiveThreadId = threadId || groupId;
+    const path = `/v1/members/me/groups/${groupId}/threads/${effectiveThreadId}/messages`;
+    console.log(`Fetching messages from: ${MESSAGING_BASE_URL}${path}`);
+    const [success, response] = await this.Call(
+      { URL: `${MESSAGING_BASE_URL}${path}`, Method: 'GET', ContentType: 'application/json', Headers: headers },
+      this.Tokens.Access
+    );
+
+    if (!success) {
+      console.error(`Failed to get messages. Success: ${success}, Response:`, response);
+      return [false, response];
+    }
+
+    return [true, response];
+  }
+
+  async GetFirstGroupMessages(): Promise<[boolean, any, Group | null]> {
+    if (!this.HasAccessToken()) {
+      return [false, null, null];
+    }
+
+    const [success, groupsData] = await this.GetGroups();
+    if (!success || !groupsData || !groupsData.groups || groupsData.groups.length === 0) {
+      console.error('No groups available');
+      return [false, null, null];
+    }
+
+    const firstGroup = groupsData.groups[0];
+    if (!firstGroup.mainThread || !firstGroup.mainThread.threadId) {
+      console.error('First group does not have a valid thread');
+      return [false, null, firstGroup];
+    }
+
+    const [messagesSuccess, messages] = await this.GetMessages(
+      firstGroup.groupId,
+      firstGroup.mainThread.threadId
+    );
+
+    if (!messagesSuccess) {
+      return [false, null, firstGroup];
+    }
+
+    return [true, messages, firstGroup];
+  }
+
   async SendMessage(config: MessagingConfig, message: string): Promise<boolean> {
     if (!this.HasAccessToken()) {
       return false;
@@ -434,8 +488,25 @@ export class PSNApi {
       const response: AxiosResponse = await axios(axiosConfig);
       return [true, response.data];
     } catch (error: any) {
-      console.error(`API call failed: ${error.message}`);
-      return [false, null];
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error(`API call failed: ${error.message}`);
+        console.error(`Status: ${error.response.status}`);
+        console.error(`URL: ${config.URL}`);
+        console.error(`Response data:`, JSON.stringify(error.response.data));
+        return [false, error.response.data];
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error(`API call failed: No response received`);
+        console.error(`URL: ${config.URL}`);
+        return [false, null];
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error(`API call failed: ${error.message}`);
+        console.error(`URL: ${config.URL}`);
+        return [false, null];
+      }
     }
   }
 
