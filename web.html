@@ -518,6 +518,14 @@
             box-shadow: 0 0 0 3px rgba(0, 112, 204, 0.1);
         }
 
+        #friend-search-clear-btn {
+            min-width: 44px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
         /* Main Content */
         .main-content {
             flex: 1;
@@ -1405,6 +1413,12 @@
                         </div>
                         <span class="badge" id="friend-count">0</span>
                     </div>
+                    <div class="search-box" style="margin-bottom: var(--spacing-md);">
+                        <input type="text" class="search-input" id="friend-search-input" placeholder="Search friends..." aria-label="Search friends">
+                        <button class="btn btn-primary" id="friend-search-clear-btn" style="display: none;" aria-label="Clear search">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                     <div class="friends-list" id="friends-list">
                         <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.875rem;">Click "Load Friends" to see your friends list</div>
                     </div>
@@ -1503,6 +1517,8 @@
         let connectionAttempts = 0;
         let groupsData = {}; // Store groups data to access latestMessage
         let refreshInterval = null; // Store the refresh interval ID
+        let allFriends = []; // Store all friends for filtering
+        let friendElements = []; // Store friend DOM elements
 
         // DOM Elements
         const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -1512,6 +1528,8 @@
         const loadGroupsBtn = document.getElementById('load-groups-btn');
         const createGroupBtn = document.getElementById('create-group-btn');
         const searchBtn = document.getElementById('search-btn');
+        const friendSearchInput = document.getElementById('friend-search-input');
+        const friendSearchClearBtn = document.getElementById('friend-search-clear-btn');
         const deleteFriendBtn = document.getElementById('delete-friend-btn');
         const sendBtn = document.getElementById('send-btn');
         const uploadBtn = document.getElementById('upload-btn');
@@ -1673,6 +1691,66 @@
             }
         }
 
+        // Filter friends based on search input
+        function filterFriends() {
+            const searchTerm = friendSearchInput.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                // Show all friends
+                friendElements.forEach(item => {
+                    item.style.display = '';
+                });
+                friendSearchClearBtn.style.display = 'none';
+                
+                // Remove "no results" message if it exists
+                const noResults = friendsList.querySelector('.no-friends-results');
+                if (noResults) {
+                    noResults.remove();
+                }
+            } else {
+                // Show clear button when there's a search term
+                friendSearchClearBtn.style.display = 'flex';
+                
+                // Filter friends
+                let visibleCount = 0;
+                friendElements.forEach((item, index) => {
+                    const friend = allFriends[index];
+                    const friendName = friend.onlineId.toLowerCase();
+                    const matches = friendName.includes(searchTerm);
+                    
+                    if (matches) {
+                        item.style.display = '';
+                        visibleCount++;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Show "no results" message if no matches
+                if (visibleCount === 0) {
+                    const noResults = friendsList.querySelector('.no-friends-results');
+                    if (!noResults) {
+                        const noResultsDiv = document.createElement('div');
+                        noResultsDiv.className = 'no-friends-results';
+                        noResultsDiv.style.cssText = 'padding: 20px; text-align: center; color: #94a3b8; font-size: 0.875rem;';
+                        noResultsDiv.textContent = `No friends found matching "${searchTerm}"`;
+                        friendsList.appendChild(noResultsDiv);
+                    }
+                } else {
+                    const noResults = friendsList.querySelector('.no-friends-results');
+                    if (noResults) {
+                        noResults.remove();
+                    }
+                }
+            }
+        }
+
+        // Clear friend search
+        function clearFriendSearch() {
+            friendSearchInput.value = '';
+            filterFriends();
+        }
+
         // Load friends list
         async function loadFriends() {
             loadFriendsBtn.innerHTML = '<span class="spinner"></span> <span>Loading...</span>';
@@ -1682,7 +1760,9 @@
             
             if (friendsData && friendsData.friends) {
                 const friends = friendsData.friends.profiles || [];
+                allFriends = friends; // Store friends data
                 friendsList.innerHTML = '';
+                friendElements = []; // Reset friend elements array
                 
                 if (friends.length === 0) {
                     friendsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.875rem;">No friends found</div>';
@@ -1747,11 +1827,16 @@
                         });
                         
                         friendsList.appendChild(friendItem);
+                        friendElements.push(friendItem); // Store element for filtering
                     });
                 }
                 
                 friendCount.textContent = friends.length;
                 showNotification(`Loaded ${friends.length} friends`, 'success');
+                
+                // Clear search when friends are loaded
+                friendSearchInput.value = '';
+                friendSearchClearBtn.style.display = 'none';
             }
             
             loadFriendsBtn.innerHTML = '<i class="fas fa-user-friends"></i> <span>Load Friends</span>';
@@ -2340,6 +2425,10 @@
         searchBtn.addEventListener('click', searchUsers);
         sendBtn.addEventListener('click', sendMessage);
         imageUpload.addEventListener('change', handleImageUpload);
+        
+        // Friend search event listeners
+        friendSearchInput.addEventListener('input', filterFriends);
+        friendSearchClearBtn.addEventListener('click', clearFriendSearch);
         
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
