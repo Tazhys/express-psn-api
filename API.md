@@ -1,6 +1,6 @@
-# PSN API Documentation
+# API Documentation
 
-Complete API documentation for the PlayStation Network Express API server.
+Complete API documentation for the Express PSN API server.
 
 ## Base URL
 
@@ -22,7 +22,7 @@ Most endpoints require authentication credentials. You can provide them via:
    - `x-client-secret` (optional)
    - `x-npsso` (optional - will be fetched automatically)
 
-**Note:** If NPSSO is not provided, the server will automatically fetch it from Sony's API endpoint.
+**Note:** If NPSSO is not provided, the server will automatically attempt to fetch it from Sony's API endpoint.
 
 ---
 
@@ -40,7 +40,7 @@ Fetches the NPSSO token from Sony's SSO cookie endpoint.
 ```json
 {
   "success": true,
-  "npsso": "1FvGMxhJNqohvDo4UPrtiojg7sA928wFixRgh3WXUa0kg3m4W37YZ7IXh6WHWnhC"
+  "npsso": "a0kg3m4W37YZ7IXh6WXXXXC1FvGMxhJNqohvXXXXPrtiojg7sA928wFixXXX3WXU"
 }
 ```
 
@@ -61,11 +61,11 @@ curl http://localhost:3000/api/psn/npsso
 
 ### 2. Get Access Token
 
-Retrieves or refreshes the PSN access token. Tokens are automatically saved and refreshed when expired.
+Retrieves an access token for making authenticated requests to the PSN API.
 
 **Endpoint:** `GET /api/psn/token`
 
-**Authentication:** Required (CLIENT_ID, optional NPSSO)
+**Authentication:** Required
 
 **Headers:**
 - `x-client-id`: Your PSN client ID
@@ -83,7 +83,7 @@ Retrieves or refreshes the PSN access token. Tokens are automatically saved and 
     },
     "Refresh": {
       "Token": "eyJhbGciOiJSUzI1NiIs...",
-      "ExpiresIn": 5184000
+      "ExpiresIn": 2592000
     }
   }
 }
@@ -108,14 +108,14 @@ curl -H "x-client-id: your_client_id" \
 
 ### 3. Get User Profile
 
-Retrieves a user's profile information. If no username is provided, returns the authenticated user's profile.
+Retrieves profile information for a user. If no name is provided, returns the authenticated user's profile.
 
 **Endpoint:** `GET /api/psn/profile/:name?`
 
 **Authentication:** Required
 
 **Parameters:**
-- `name` (optional): PSN username. If omitted, returns "me" (authenticated user's profile)
+- `name` (optional): PSN username. If omitted, returns your own profile.
 
 **Headers:**
 - `x-client-id`: Your PSN client ID
@@ -130,40 +130,12 @@ Retrieves a user's profile information. If no username is provided, returns the 
     "profile": {
       "onlineId": "username",
       "accountId": "123456789",
-      "npId": "np_123456789",
-      "aboutMe": "Gamer profile description",
-      "avatarUrls": [
-        {
-          "avatarUrl": "https://...",
-          "size": "s"
-        }
-      ],
-      "plus": 1,
-      "isOfficiallyVerified": false,
-      "trophySummary": {
-        "level": 15,
-        "progress": 45,
-        "earnedTrophies": {
-          "bronze": 100,
-          "silver": 50,
-          "gold": 25,
-          "platinum": 5
-        }
-      },
+      "npId": "123456789",
+      "avatarUrls": [...],
+      "plus": false,
+      "aboutMe": "About me text",
       "primaryOnlineStatus": "online",
-      "presences": [
-        {
-          "onlineStatus": "online",
-          "lastOnlineDate": "2024-01-01T00:00:00Z",
-          "hasBroadcastData": false
-        }
-      ],
-      "consoleAvailability": {
-        "availabilityStatus": "available"
-      },
-      "friendRelation": "friend",
-      "following": true,
-      "blocking": false
+      "presences": [...]
     }
   }
 }
@@ -178,12 +150,15 @@ Retrieves a user's profile information. If no username is provided, returns the 
 ```
 
 **Examples:**
+
+Get your own profile:
 ```bash
-# Get your own profile
 curl -H "x-client-id: your_client_id" \
      http://localhost:3000/api/psn/profile
+```
 
-# Get specific user's profile
+Get another user's profile:
+```bash
 curl -H "x-client-id: your_client_id" \
      http://localhost:3000/api/psn/profile/username
 ```
@@ -210,20 +185,15 @@ Retrieves the authenticated user's friends list.
   "friends": {
     "profiles": [
       {
-        "onlineId": "friend1",
-        "accountId": "123456789",
-        "npId": "np_123456789",
-        "aboutMe": "Friend's profile",
+        "onlineId": "friend_username",
+        "accountId": "987654321",
+        "npId": "987654321",
         "avatarUrls": [...],
-        "trophySummary": {...},
         "primaryOnlineStatus": "online",
-        "friendRelation": "friend",
-        ...
+        "presences": [...],
+        "friendRelation": "friend"
       }
-    ],
-    "size": 50,
-    "start": 0,
-    "totalResults": 50
+    ]
   }
 }
 ```
@@ -246,14 +216,14 @@ curl -H "x-client-id: your_client_id" \
 
 ### 5. Delete Friend
 
-Removes a friend from the authenticated user's friends list.
+Removes a friend from your friends list.
 
 **Endpoint:** `DELETE /api/psn/friends/:name`
 
 **Authentication:** Required
 
 **Parameters:**
-- `name` (required): PSN username to remove from friends list
+- `name` (required): PSN username of the friend to remove
 
 **Headers:**
 - `x-client-id`: Your PSN client ID
@@ -287,7 +257,7 @@ curl -X DELETE \
 
 ### 6. Universal Search
 
-Searches for users, games, or other content on PlayStation Network.
+Searches for PSN users by username.
 
 **Endpoint:** `POST /api/psn/search`
 
@@ -302,47 +272,31 @@ Searches for users, games, or other content on PlayStation Network.
 **Request Body:**
 ```json
 {
-  "name": "search_term",
+  "name": "username",
   "domain": "SocialAllAccounts"
 }
 ```
 
 **Parameters:**
-- `name` (required): Search term
-- `domain` (optional): Search domain. Default: `"SocialAllAccounts"`. Other options may include game-specific domains.
+- `name` (required): Username to search for
+- `domain` (optional): Search domain. Defaults to `SocialAllAccounts`
 
 **Response:**
 ```json
 {
   "success": true,
   "result": {
-    "domain": "SocialAllAccounts",
-    "domainTitle": "People",
-    "domainExpandedTitle": "People",
-    "totalResultCount": 10,
-    "zeroState": false,
     "results": [
       {
-        "id": "123456789",
         "type": "profile",
-        "score": 0.95,
-        "relevancyScore": 0.95,
         "socialMetadata": {
-          "accountId": "123456789",
           "onlineId": "username",
-          "avatarUrl": "https://...",
-          "profilePicUrl": "https://...",
-          "isOfficiallyVerified": false,
-          "isPsPlus": true,
-          "relationshipState": "none",
-          "mutualFriendsCount": 0,
-          "accountType": "PSN",
+          "accountId": "123456789",
           "country": "US",
-          "language": "en-US"
+          "accountType": "PSN"
         }
       }
-    ],
-    "next": "cursor_string"
+    ]
   }
 }
 ```
@@ -360,7 +314,10 @@ Searches for users, games, or other content on PlayStation Network.
 curl -X POST \
      -H "Content-Type: application/json" \
      -H "x-client-id: your_client_id" \
-     -d '{"name": "username", "domain": "SocialAllAccounts"}' \
+     -d '{
+       "name": "username",
+       "domain": "SocialAllAccounts"
+     }' \
      http://localhost:3000/api/psn/search
 ```
 
@@ -368,7 +325,7 @@ curl -X POST \
 
 ### 7. Create Group
 
-Creates a new messaging group with specified invitees.
+Creates a new messaging group with specified users.
 
 **Endpoint:** `POST /api/psn/groups`
 
@@ -383,7 +340,7 @@ Creates a new messaging group with specified invitees.
 **Request Body:**
 ```json
 {
-  "invites": ["accountId1", "accountId2", "accountId3"]
+  "invites": ["accountId1", "accountId2"]
 }
 ```
 
@@ -396,21 +353,13 @@ Creates a new messaging group with specified invitees.
   "success": true,
   "group": {
     "groupId": "group_123456789",
-    "hasAllAccountInvited": true,
+    "groupName": {
+      "status": 1,
+      "value": "Group Name"
+    },
+    "members": [...],
     "mainThread": {
-      "threadId": "thread_123456789",
-      "existsUnreadMessage": false,
-      "modifiedTimestamp": "2024-01-01T00:00:00Z",
-      "latestMessage": {
-        "messageUid": "msg_123456789",
-        "messageType": 1,
-        "body": "",
-        "createdTimestamp": "2024-01-01T00:00:00Z",
-        "sender": {
-          "accountId": "123456789",
-          "onlineId": "username"
-        }
-      }
+      "threadId": "thread_123456789"
     }
   }
 }
@@ -429,7 +378,9 @@ Creates a new messaging group with specified invitees.
 curl -X POST \
      -H "Content-Type: application/json" \
      -H "x-client-id: your_client_id" \
-     -d '{"invites": ["123456789", "987654321"]}' \
+     -d '{
+       "invites": ["987654321", "123456789"]
+     }' \
      http://localhost:3000/api/psn/groups
 ```
 
@@ -460,14 +411,6 @@ Retrieves all messaging groups for the authenticated user.
           "status": 1,
           "value": "My Group"
         },
-        "groupIcon": {
-          "status": 1
-        },
-        "groupType": 1,
-        "isFavorite": false,
-        "joinedTimestamp": "2024-01-01T00:00:00Z",
-        "modifiedTimestamp": "2024-01-01T00:00:00Z",
-        "existsNewArrival": false,
         "members": [
           {
             "accountId": "123456789",
@@ -476,13 +419,9 @@ Retrieves all messaging groups for the authenticated user.
         ],
         "mainThread": {
           "threadId": "thread_123456789",
-          "existsUnreadMessage": false,
-          "modifiedTimestamp": "2024-01-01T00:00:00Z",
           "latestMessage": {
-            "messageUid": "msg_123456789",
-            "messageType": 1,
             "body": "Hello!",
-            "createdTimestamp": "2024-01-01T00:00:00Z",
+            "createdTimestamp": "1744404725072",
             "sender": {
               "accountId": "123456789",
               "onlineId": "username"
@@ -511,7 +450,75 @@ curl -H "x-client-id: your_client_id" \
 
 ---
 
-### 9. Send Message
+### 9. Get Messages
+
+Retrieves messages from a specific group thread.
+
+**Endpoint:** `GET /api/psn/messages/:groupId/:threadId?`
+
+**Authentication:** Required
+
+**Parameters:**
+- `groupId` (required): The group ID
+- `threadId` (optional): The thread ID. If omitted, uses `groupId` as the thread ID
+
+**Headers:**
+- `x-client-id`: Your PSN client ID
+- `x-npsso`: (optional) Your NPSSO token
+- `x-client-secret`: (optional) Your PSN client secret
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages": {
+    "messages": [
+      {
+        "messageUid": "msg_123456789",
+        "messageType": 1,
+        "body": "Hello!",
+        "createdTimestamp": "1744404725072",
+        "sender": {
+          "accountId": "123456789",
+          "onlineId": "username"
+        },
+        "messageDetail": {
+          "imageMessageDetail": {...},
+          "stickerMessageDetail": {...},
+          "voiceMessageDetail": {...}
+        }
+      }
+    ]
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Failed to get messages",
+  "details": {...}
+}
+```
+
+**Examples:**
+
+Get messages using both groupId and threadId:
+```bash
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/messages/group_123456789/thread_123456789
+```
+
+Get messages using groupId as threadId:
+```bash
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/messages/group_123456789
+```
+
+---
+
+### 10. Send Message
 
 Sends a text message to a group thread.
 
@@ -530,13 +537,13 @@ Sends a text message to a group thread.
 {
   "groupId": "group_123456789",
   "threadId": "thread_123456789",
-  "message": "Hello, this is a test message!"
+  "message": "Hello, PSN!"
 }
 ```
 
 **Parameters:**
-- `groupId` (required): The group ID to send the message to
-- `threadId` (optional): The thread ID. If omitted, uses the group's main thread
+- `groupId` (required): The group ID
+- `threadId` (optional): The thread ID. If omitted, uses `groupId` as the thread ID
 - `message` (required): The message text to send
 
 **Response:**
@@ -563,138 +570,14 @@ curl -X POST \
      -d '{
        "groupId": "group_123456789",
        "threadId": "thread_123456789",
-       "message": "Hello!"
+       "message": "Hello, PSN!"
      }' \
      http://localhost:3000/api/psn/messages
 ```
 
 ---
 
-### 10. Get Messages
-
-Retrieves messages from a specific group thread.
-
-**Endpoint:** `GET /api/psn/messages/:groupId/:threadId?`
-
-**Authentication:** Required
-
-**Parameters:**
-- `groupId` (required): The group ID to get messages from
-- `threadId` (optional): The thread ID. If omitted, uses the groupId as the threadId
-
-**Headers:**
-- `x-client-id`: Your PSN client ID
-- `x-npsso`: (optional) Your NPSSO token
-- `x-client-secret`: (optional) Your PSN client secret
-
-**Response:**
-```json
-{
-  "success": true,
-  "messages": {
-    "messages": [
-      {
-        "messageUid": "msg_123456789",
-        "messageType": 1,
-        "body": "Hello, this is a message!",
-        "createdTimestamp": "1744404725072",
-        "sender": {
-          "accountId": "123456789",
-          "onlineId": "username"
-        }
-      }
-    ]
-  }
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "error": "Failed to get messages",
-  "details": {
-    "error": {
-      "referenceId": "...",
-      "code": 2285569,
-      "message": "Bad Request (header: Accept-Language)"
-    }
-  }
-}
-```
-
-**Examples:**
-```bash
-# Get messages with threadId
-curl -H "x-client-id: your_client_id" \
-     http://localhost:3000/api/psn/messages/group_123456789/thread_123456789
-
-# Get messages using groupId as threadId
-curl -H "x-client-id: your_client_id" \
-     http://localhost:3000/api/psn/messages/group_123456789
-```
-
----
-
-### 11. Get Messages from First Group
-
-Retrieves messages from the first available group. This is a convenience endpoint that automatically selects the first group and fetches its messages.
-
-**Endpoint:** `GET /api/psn/messages/first`
-
-**Authentication:** Required
-
-**Headers:**
-- `x-client-id`: Your PSN client ID
-- `x-npsso`: (optional) Your NPSSO token
-- `x-client-secret`: (optional) Your PSN client secret
-
-**Response:**
-```json
-{
-  "success": true,
-  "messages": {
-    "messages": [
-      {
-        "messageUid": "msg_123456789",
-        "messageType": 1,
-        "body": "Hello!",
-        "createdTimestamp": "1744404725072",
-        "sender": {
-          "accountId": "123456789",
-          "onlineId": "username"
-        }
-      }
-    ]
-  },
-  "group": {
-    "groupId": "group_123456789",
-    "groupName": {
-      "status": 1,
-      "value": "My Group"
-    },
-    "threadId": "thread_123456789"
-  }
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "error": "Failed to get messages from first group"
-}
-```
-
-**Example:**
-```bash
-curl -H "x-client-id: your_client_id" \
-     http://localhost:3000/api/psn/messages/first
-```
-
----
-
-### 12. Add Resource to Group
+### 11. Add Resource to Group
 
 Uploads a resource (image) to a group. Returns a resource ID that can be used to send the resource as a message.
 
@@ -712,13 +595,13 @@ Uploads a resource (image) to a group. Returns a resource ID that can be used to
 ```json
 {
   "groupId": "group_123456789",
-  "path": "/path/to/image.jpg"
+  "path": "https://example.com/image.jpg"
 }
 ```
 
 **Parameters:**
-- `groupId` (required): The group ID to upload the resource to
-- `path` (required): Local file path or HTTP/HTTPS URL to an image (PNG, JPG, JPEG)
+- `groupId` (required): The group ID
+- `path` (required): URL or file path to the image resource
 
 **Response:**
 ```json
@@ -738,17 +621,6 @@ Uploads a resource (image) to a group. Returns a resource ID that can be used to
 
 **Example:**
 ```bash
-# Using local file path
-curl -X POST \
-     -H "Content-Type: application/json" \
-     -H "x-client-id: your_client_id" \
-     -d '{
-       "groupId": "group_123456789",
-       "path": "/path/to/image.jpg"
-     }' \
-     http://localhost:3000/api/psn/resources
-
-# Using image URL
 curl -X POST \
      -H "Content-Type: application/json" \
      -H "x-client-id: your_client_id" \
@@ -761,7 +633,7 @@ curl -X POST \
 
 ---
 
-### 13. Send Resource
+### 12. Send Resource
 
 Sends a previously uploaded resource (image or sticker) as a message in a group thread.
 
@@ -781,20 +653,18 @@ Sends a previously uploaded resource (image or sticker) as a message in a group 
   "groupId": "group_123456789",
   "threadId": "thread_123456789",
   "resourceId": "resource_123456789",
-  "type": 0
+  "type": 1
 }
 ```
 
 **Parameters:**
 - `groupId` (required): The group ID
-- `threadId` (optional): The thread ID. If omitted, uses the group's main thread
-- `resourceId` (required): The resource ID from the `/api/psn/resources` endpoint
-- `type` (required): Resource type (integer)
-  - `0` = Image
-  - `1` = Sticker
-  - `2` = Video
-  - `3` = Audio
-  - `4` = Link
+- `threadId` (optional): The thread ID. If omitted, uses `groupId` as the thread ID
+- `resourceId` (required): The resource ID from the upload response
+- `type` (required): Resource type
+  - `1` = Image
+  - `2` = Sticker
+  - `3` = Voice message
 
 **Response:**
 ```json
@@ -821,51 +691,53 @@ curl -X POST \
        "groupId": "group_123456789",
        "threadId": "thread_123456789",
        "resourceId": "resource_123456789",
-       "type": 0
+       "type": 1
      }' \
      http://localhost:3000/api/psn/resources/send
 ```
 
 ---
 
-## Error Responses
+### 13. Get Resource
 
-All endpoints may return the following error responses:
+Retrieves a resource (image, audio, etc.) from a group.
 
-### 400 Bad Request
+**Endpoint:** `GET /api/psn/groups/:groupId/resources/:resourceId`
+
+**Authentication:** Required
+
+**Parameters:**
+- `groupId` (required): The group ID
+- `resourceId` (required): The resource ID
+
+**Headers:**
+- `x-client-id`: Your PSN client ID
+- `x-npsso`: (optional) Your NPSSO token
+- `x-client-secret`: (optional) Your PSN client secret
+
+**Response:**
+Returns the resource file (image, audio, etc.) with appropriate Content-Type header.
+
+**Error Response:**
 ```json
 {
-  "error": "Error description"
+  "success": false,
+  "error": "Resource not found"
 }
 ```
 
-### 500 Internal Server Error
-```json
-{
-  "error": "Error description",
-  "message": "Detailed error message"
-}
+**Example:**
+```bash
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/groups/group_123456789/resources/resource_123456789 \
+     --output image.jpg
 ```
-
----
-
-## Rate Limiting
-
-Currently, there are no rate limits implemented. However, please be respectful of Sony's API and avoid making excessive requests.
-
----
-
-## Token Management
-
-- Access tokens are automatically saved to `data/psn_tokens.json`
-- Tokens are automatically refreshed when expired
-- Tokens persist across server restarts
 
 ---
 
 ## Complete Workflow Example
 
-### 1. Send an Image Message
+### Send an Image Message
 
 ```bash
 # Step 1: Upload the image
@@ -881,7 +753,7 @@ RESOURCE_RESPONSE=$(curl -X POST \
 # Extract resource ID (using jq)
 RESOURCE_ID=$(echo $RESOURCE_RESPONSE | jq -r '.resourceId')
 
-# Step 2: Send the image as a message
+# Step 2: Send the resource as a message
 curl -X POST \
   -H "Content-Type: application/json" \
   -H "x-client-id: your_client_id" \
@@ -889,42 +761,43 @@ curl -X POST \
     \"groupId\": \"group_123456789\",
     \"threadId\": \"thread_123456789\",
     \"resourceId\": \"$RESOURCE_ID\",
-    \"type\": 0
+    \"type\": 1
   }" \
   http://localhost:3000/api/psn/resources/send
 ```
 
 ---
 
-## Health Check
+## Error Handling
 
-**Endpoint:** `GET /health`
+All endpoints return a consistent error format:
 
-**Response:**
 ```json
 {
-  "status": "ok",
-  "message": "PSN API Server is running"
+  "success": false,
+  "error": "Error message description"
 }
 ```
+
+Common HTTP status codes:
+- `200` - Success
+- `400` - Bad Request (missing or invalid parameters)
+- `404` - Not Found
+- `500` - Internal Server Error
+
+---
+
+## Rate Limiting
+
+Please be mindful of rate limits when making requests to the PSN API. The server does not implement rate limiting, but Sony's API may throttle excessive requests.
 
 ---
 
 ## Notes
 
-1. **NPSSO Auto-fetching**: If NPSSO is not provided, the server will automatically fetch it from Sony's API. This makes NPSSO optional in most cases.
-
-2. **Account IDs vs Online IDs**: Some endpoints require account IDs (numeric), while others use online IDs (username strings). Make sure to use the correct identifier.
-
-3. **Thread IDs**: If a thread ID is not specified for messaging endpoints, the group's main thread will be used automatically.
-
-4. **Resource Types**: Currently, only Image (0) and Sticker (1) resource types are fully implemented. Video, Audio, and Link types may require additional implementation.
-
-5. **File Paths**: When uploading resources, you can use either local file paths or HTTP/HTTPS URLs. URLs are automatically downloaded to a temporary location before upload.
-
----
-
-## Support
-
-For issues or questions, please refer to the main README.md file or check the project repository.
+- Tokens are automatically cached and refreshed when needed
+- NPSSO tokens can be automatically fetched if not provided
+- All timestamps are in milliseconds since epoch
+- Resource types: `1` = Image, `2` = Sticker, `3` = Voice message
+- The API automatically handles token refresh when access tokens expire
 
