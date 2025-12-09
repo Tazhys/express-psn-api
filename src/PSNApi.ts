@@ -242,7 +242,7 @@ export class PSNApi {
 
     const effectiveThreadId = threadId || groupId;
     const path = `/v1/members/me/groups/${groupId}/threads/${effectiveThreadId}/messages`;
-    console.log(`Fetching messages from: ${MESSAGING_BASE_URL}${path}`);
+    //console.log(`Fetching messages from: ${MESSAGING_BASE_URL}${path}`);
     const [success, response] = await this.Call(
       { URL: `${MESSAGING_BASE_URL}${path}`, Method: 'GET', ContentType: 'application/json', Headers: headers },
       this.Tokens.Access
@@ -252,6 +252,13 @@ export class PSNApi {
       console.error(`Failed to get messages. Success: ${success}, Response:`, response);
       return [false, response];
     }
+
+    // console.log(response.messages)
+    // response.messages?.forEach((msg: any) => {
+    //   if (msg.messageDetail) {
+    //     console.log('messageDetail for messageUid', msg.messageUid, ':', msg.messageDetail);
+    //   }
+    // });
 
     return [true, response];
   }
@@ -354,6 +361,42 @@ export class PSNApi {
     } catch (error: any) {
       console.error(`Failed to add resource: ${error.message}`);
       return [false, ''];
+    }
+  }
+
+  async GetResource(groupId: string, resourceId: string): Promise<[boolean, Buffer | null, string | null]> {
+    if (!this.HasAccessToken()) {
+      return [false, null, null];
+    }
+
+    try {
+      const urlPath = `/v1/groups/${groupId}/resources/${resourceId}`;
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${this.Tokens.Access.Token}`,
+        'Accept': '*/*'
+      };
+
+      const axiosConfig: AxiosRequestConfig = {
+        method: 'GET',
+        url: `${MESSAGING_BASE_URL}${urlPath}`,
+        headers,
+        responseType: 'arraybuffer'
+      };
+
+      const response: AxiosResponse = await axios(axiosConfig);
+      
+      // Determine content type from response headers or default to image/jpeg
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      const buffer = Buffer.from(response.data);
+      
+      return [true, buffer, contentType];
+    } catch (error: any) {
+      console.error(`Failed to get resource: ${error.message}`);
+      if (error.response) {
+        console.error(`Status: ${error.response.status}`);
+        console.error(`Response: ${JSON.stringify(error.response.data)}`);
+      }
+      return [false, null, null];
     }
   }
 

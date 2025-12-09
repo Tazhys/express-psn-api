@@ -206,7 +206,7 @@ router.get('/messages/first', initializePSNApi, async (req: Request, res: Respon
         } : null
       });
     } else {
-      console.log(messages, group)
+      //console.log(messages, group)
       res.status(500).json({ success: false, error: 'Failed to get messages from first group' });
     }
   } catch (error: any) {
@@ -221,7 +221,7 @@ router.get('/messages/:groupId/:threadId?', initializePSNApi, async (req: Reques
       return res.status(500).json({ error: 'PSN API not initialized' });
     }
     const { groupId, threadId } = req.params;
-    console.log('Getting messages for groupId:', groupId, 'threadId:', threadId);
+    //console.log('Getting messages for groupId:', groupId, 'threadId:', threadId);
     if (!groupId) {
       return res.status(400).json({ error: 'groupId is required' });
     }
@@ -307,6 +307,29 @@ router.post('/resources/send', initializePSNApi, async (req: Request, res: Respo
       res.json({ success: true, message: 'Resource sent successfully' });
     } else {
       res.status(500).json({ success: false, error: 'Failed to send resource' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/psn/groups/:groupId/resources/:resourceId - Get resource (image/audio/etc)
+router.get('/groups/:groupId/resources/:resourceId', initializePSNApi, async (req: Request, res: Response) => {
+  try {
+    if (!psnApi) {
+      return res.status(500).json({ error: 'PSN API not initialized' });
+    }
+    const { groupId, resourceId } = req.params;
+    if (!groupId || !resourceId) {
+      return res.status(400).json({ error: 'groupId and resourceId are required' });
+    }
+    const [success, buffer, contentType] = await psnApi.GetResource(groupId, resourceId);
+    if (success && buffer) {
+      res.setHeader('Content-Type', contentType || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      res.send(buffer);
+    } else {
+      res.status(404).json({ success: false, error: 'Resource not found' });
     }
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -570,7 +570,131 @@ curl -X POST \
 
 ---
 
-### 10. Add Resource to Group
+### 10. Get Messages
+
+Retrieves messages from a specific group thread.
+
+**Endpoint:** `GET /api/psn/messages/:groupId/:threadId?`
+
+**Authentication:** Required
+
+**Parameters:**
+- `groupId` (required): The group ID to get messages from
+- `threadId` (optional): The thread ID. If omitted, uses the groupId as the threadId
+
+**Headers:**
+- `x-client-id`: Your PSN client ID
+- `x-npsso`: (optional) Your NPSSO token
+- `x-client-secret`: (optional) Your PSN client secret
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages": {
+    "messages": [
+      {
+        "messageUid": "msg_123456789",
+        "messageType": 1,
+        "body": "Hello, this is a message!",
+        "createdTimestamp": "1744404725072",
+        "sender": {
+          "accountId": "123456789",
+          "onlineId": "username"
+        }
+      }
+    ]
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Failed to get messages",
+  "details": {
+    "error": {
+      "referenceId": "...",
+      "code": 2285569,
+      "message": "Bad Request (header: Accept-Language)"
+    }
+  }
+}
+```
+
+**Examples:**
+```bash
+# Get messages with threadId
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/messages/group_123456789/thread_123456789
+
+# Get messages using groupId as threadId
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/messages/group_123456789
+```
+
+---
+
+### 11. Get Messages from First Group
+
+Retrieves messages from the first available group. This is a convenience endpoint that automatically selects the first group and fetches its messages.
+
+**Endpoint:** `GET /api/psn/messages/first`
+
+**Authentication:** Required
+
+**Headers:**
+- `x-client-id`: Your PSN client ID
+- `x-npsso`: (optional) Your NPSSO token
+- `x-client-secret`: (optional) Your PSN client secret
+
+**Response:**
+```json
+{
+  "success": true,
+  "messages": {
+    "messages": [
+      {
+        "messageUid": "msg_123456789",
+        "messageType": 1,
+        "body": "Hello!",
+        "createdTimestamp": "1744404725072",
+        "sender": {
+          "accountId": "123456789",
+          "onlineId": "username"
+        }
+      }
+    ]
+  },
+  "group": {
+    "groupId": "group_123456789",
+    "groupName": {
+      "status": 1,
+      "value": "My Group"
+    },
+    "threadId": "thread_123456789"
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Failed to get messages from first group"
+}
+```
+
+**Example:**
+```bash
+curl -H "x-client-id: your_client_id" \
+     http://localhost:3000/api/psn/messages/first
+```
+
+---
+
+### 12. Add Resource to Group
 
 Uploads a resource (image) to a group. Returns a resource ID that can be used to send the resource as a message.
 
@@ -637,7 +761,7 @@ curl -X POST \
 
 ---
 
-### 11. Send Resource
+### 13. Send Resource
 
 Sends a previously uploaded resource (image or sticker) as a message in a group thread.
 
