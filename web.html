@@ -478,6 +478,13 @@
             justify-content: center;
             font-size: 1.2rem;
             box-shadow: var(--shadow-glow);
+            overflow: hidden;
+        }
+
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .chat-header-info h2 {
@@ -825,6 +832,20 @@
             100% {
                 transform: rotate(360deg);
             }
+        }
+
+        .friend-game {
+            display: flex;
+            align-items: center;
+            margin-top: 4px;
+            /* Space between status and game info */
+            font-size: 0.85rem;
+            /* Smaller text for muted appearance */
+        }
+
+        .muted-text {
+            color: #8e8e8e;
+            /* Grey color for muted appearance */
         }
     </style>
 </head>
@@ -1244,20 +1265,30 @@
                         const avatarUrl = friend.avatarUrls?.[0]?.avatarUrl || '';
                         const initials = friend.onlineId ? friend.onlineId.substring(0, 2).toUpperCase() : '?';
 
+                        // Check if presence exists and has game data
+                        const presence = friend.presences?.[0] || {};
+                        const hasGame = presence.npTitleIconUrl && presence.titleName;
+
                         const friendItem = document.createElement('div');
                         friendItem.className = 'friend-item';
 
-
                         friendItem.innerHTML = `
-                            <div class="friend-avatar">${avatarUrl ? `<img src="${avatarUrl}" alt="${friend.onlineId}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-weight:600;font-size:0.9rem">${initials}</span>` : initials}</div>
-                            <div class="friend-info">
-                                <div class="friend-name">${friend.onlineId}</div>
-                                <div class="friend-status">
-                                    <span class="online-dot ${friend.presences[0].onlineStatus === 'online' ? 'online' : 'offline'}"></span>
-                                    ${friend.presences[0].onlineStatus || 'offline'}
-                                </div>
-                            </div>
-                        `;
+        <div class="friend-avatar">${avatarUrl ? `<img src="${avatarUrl}" alt="${friend.onlineId}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-weight:600;font-size:0.9rem">${initials}</span>` : initials}</div>
+        <div class="friend-info">
+            <div class="friend-name">${friend.onlineId}</div>
+            <div class="friend-status">
+                <span class="online-dot ${presence.onlineStatus === 'online' ? 'online' : 'offline'}"></span>
+                ${presence.onlineStatus || 'offline'}
+            </div>
+            ${hasGame ? `
+                <div class="friend-game muted-text">
+                    ${presence.npTitleIconUrl ? `<img src="${presence.npTitleIconUrl}" alt="${presence.titleName}" style="width:16px;height:16px;margin-right:4px">` : ''}
+                    Playing ${presence.titleName || ''} on ${presence.platform || ''}
+                </div>
+            ` : ''}
+        </div>
+    `;
+
 
                         friendItem.addEventListener('click', async () => {
                             // Deselect all groups
@@ -1279,12 +1310,13 @@
 
                             // Update chat header
                             document.getElementById('active-group-name').textContent = friend.onlineId;
-                            document.getElementById('active-group-status').textContent = `${friend.primaryOnlineStatus || 'offline'} • Direct Link`;
+                            document.getElementById('active-group-status').textContent = `${friend.presences[0].onlineStatus || 'offline'} • ${presence.titleName ? `Playing ${presence.titleName} on ${presence.platform}` : ''}`;
 
-                            // Update chat avatar with friend's initials
+                            // Update chat avatar with friend's avatar
                             const chatAvatar = document.querySelector('.chat-avatar');
-                            chatAvatar.textContent = initials;
-                            chatAvatar.innerHTML = initials; // Override icon
+                            chatAvatar.innerHTML = avatarUrl
+                                ? `<img src="${avatarUrl}" alt="${friend.onlineId}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-weight:600;font-size:1rem">${initials}</span>`
+                                : initials;
 
                             // Show delete friend button
                             deleteFriendBtn.style.display = 'block';
@@ -1610,7 +1642,7 @@
         async function loadFriendMessages(friendAccountId, friendName) {
             if (!friendAccountId) return;
 
-            chatMessages.innerHTML = '<div class="message welcome"><div class="message-text" style="color:var(--text-dim)">Establishing secure line...</div></div>';
+            chatMessages.innerHTML = '<div class="message welcome"><div class="message-text" style="color:var(--text-dim)">Syncing chat history...</div></div>';
 
             const groupInfo = await findOrCreateFriendGroup(friendAccountId);
 
